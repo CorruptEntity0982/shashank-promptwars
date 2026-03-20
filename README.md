@@ -1,51 +1,104 @@
-# 🏥 Lattice Dashboard
+# 🏥 Lattice: Healthcare Document Intelligence Platform
 
-**Lattice** is an intelligent medical document processing system that extracts structured healthcare data from PDFs and builds a comprehensive knowledge graph for patient care analysis. The system uses AI-powered extraction (OpenAI GPT-4o) and graph database technology (Neo4j) to create interconnected healthcare records.
+**Lattice** is an intelligent medical document processing system powered by **Google Cloud Platform** that extracts structured healthcare data from PDFs and builds a comprehensive knowledge graph for patient care analysis.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.11-blue.svg)
-![Next.js](https://img.shields.io/badge/next.js-16.1.6-black.svg)
+![TypeScript](https://img.shields.io/badge/typescript-5+-blue.svg)
 ![Neo4j](https://img.shields.io/badge/neo4j-5.15-green.svg)
+![Google Cloud](https://img.shields.io/badge/google%20cloud-platform-yellow.svg)
 
 ---
 
-## 📋 Table of Contents
+## 📋 Quick Links
 
+- [Vertical & Problem](#-vertical--problem-statement)
+- [Approach](#-approach--logic)
+- [How It Works](#-how-it-works)
 - [Features](#-features)
 - [Architecture](#-architecture)
-- [Technology Stack](#-technology-stack)
-- [Prerequisites](#-prerequisites)
+- [Tech Stack](#-technology-stack)
 - [Installation](#-installation)
-- [Configuration](#-configuration)
-- [Running the Application](#-running-the-application)
-- [Usage Guide](#-usage-guide)
-- [API Documentation](#-api-documentation)
-- [Knowledge Graph Structure](#-knowledge-graph-structure)
-- [Project Structure](#-project-structure)
-- [Development](#-development)
-- [Troubleshooting](#-troubleshooting)
-- [Contributing](#-contributing)
-- [License](#-license)
+- [Running](#-running-the-application)
+- [Google Cloud Integration](#-google-cloud-services-integration)
+- [API Docs](#-api-documentation)
+- [Security](#-security)
+- [Assumptions](#-assumptions)
+
+---
+
+## 🎯 Vertical & Problem Statement
+
+### Healthcare Administrative Workflow Automation
+
+**Problem**: Medical professionals spend hours manually extracting and organizing data from unstructured PDF documents (claims, EOBs, encounter summaries). This manual process is:
+- **Time-consuming**: 10+ hours per week on data entry
+- **Error-prone**: Human transcription errors compromise patient safety
+- **Costly**: Labor-intensive process increases operational overhead
+- **Disconnected**: No unified view of patient history across documents
+
+**Solution**: Lattice uses **Google Cloud Platform's AI services** to automatically extract medical entities, create structured data, and build a searchable knowledge graph of patient relationships.
+
+---
+
+## 🧠 Approach & Logic
+
+### Three-Phase Processing Pipeline
+
+**Phase 1: Document Ingestion & Text Extraction**
+- Input: Raw PDF files
+- Process: **Google Gemini Vision API** extracts text from medical documents
+- Output: Raw text content
+
+**Phase 2: ai-Powered Structured Extraction**
+- Input: Extracted text
+- Process: **Google Gemini LLM API** parses medical entities using domain-specific prompts
+- Extracts: Patients, Encounters, Claims, Conditions, Providers, Hospitals
+- Output: Validated JSON structures
+
+**Phase 3: Knowledge Graph Construction**
+- Input: Structured entities
+- Process: Neo4j creates nodes and relationships
+- Output: Interactive healthcare knowledge graph
+
+### Key Design Decisions
+
+| Component | Choice | Why |
+|-----------|--------|-----|
+| **Text Extraction** | Gemini Vision API | Accurate medical PDF parsing without AWS Textract |
+| **Entity Recognition** | Gemini LLM with prompting | Zero-shot learning on medical concepts |
+| **Storage** | GCS + PostgreSQL | Cloud-native, scalable, cost-efficient |
+| **Async Processing** | Celery + Redis | Non-blocking document processing |
+| **Graph Database** | Neo4j | Enable relationship queries and clinical insights |
+
+---
+
+## ⚙️ How It Works
+
+```
+1. User uploads PDF
+   ↓
+2. FastAPI stores file in Google Cloud Storage (GCS)
+   ↓
+3. Celery worker picks up processing task
+   ↓
+4. Google Gemini Vision API extracts text from PDF
+   ↓
+5. Google Gemini LLM API parses entities (Pydantic validation)
+   ↓
+6. Neo4j ingests entities and creates relationships
+   ↓
+7. Frontend displays results with interactive graph
+```
+
+**Auto-Fallback on Model Unavailability**:
+- Primary model: `gemini-2.5-flash`
+- Fallbacks: `gemini-flash-latest` → `gemini-2.0-flash-lite`
+- Ensures reliability even if primary model reaches quota
 
 ---
 
 ## ✨ Features
-
-### Core Capabilities
-- 📄 **PDF Document Processing**: Upload and process medical documents (EOBs, claims, encounter summaries)
-- 🤖 **AI-Powered Extraction**: OpenAI GPT-4o extracts structured data from unstructured PDFs
-- 📊 **Knowledge Graph**: Neo4j graph database creates interconnected patient health records
-- 🔄 **Real-time Processing**: Asynchronous document processing with status tracking
-- 🎨 **Modern UI**: Dark-themed dashboard with interactive visualizations
-- 📈 **Graph Visualization**: Interactive node-based visualization of patient relationships
-- 🚀 **Demo Mode**: One-click demo upload with predefined patient data
-
-### Advanced Features
-- **Longitudinal Data Tracking**: Merges new data with existing patient records
-- **Multi-entity Extraction**: Patients, encounters, claims, conditions, providers, hospitals
-- **Relationship Mapping**: Tracks connections between all healthcare entities
-- **Auto-refresh Polling**: Real-time status updates every 5 seconds
-- **Terminal-style JSON Viewer**: Beautiful formatted data display
 
 ---
 
