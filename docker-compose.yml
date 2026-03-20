@@ -37,6 +37,8 @@ services:
     container_name: lattice-backend
     ports:
       - "8000:8000"
+    volumes:
+      - uploads_data:/tmp/openclaims_uploads
     environment:
       POSTGRES_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379/0
@@ -46,7 +48,7 @@ services:
       GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
       GCS_BUCKET_NAME: ${GCS_BUCKET_NAME:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
       DEBUG: "false"
     depends_on:
       redis:
@@ -63,6 +65,8 @@ services:
       dockerfile: Dockerfile
     container_name: lattice-worker
     command: celery -A celery_worker.celery_app worker --loglevel=info
+    volumes:
+      - uploads_data:/tmp/openclaims_uploads
     environment:
       POSTGRES_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379/0
@@ -72,7 +76,7 @@ services:
       GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
       GCS_BUCKET_NAME: ${GCS_BUCKET_NAME:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
     depends_on:
       redis:
         condition: service_healthy
@@ -103,3 +107,4 @@ networks:
 
 volumes:
   neo4j_data:
+  uploads_data:

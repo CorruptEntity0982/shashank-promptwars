@@ -17,6 +17,52 @@ class GeminiVisionService:
         """Initialize Gemini client"""
         genai.configure(api_key=settings.gemini_api_key)
         self.model_name = settings.gemini_model
+
+    @staticmethod
+    def _normalize_model_name(name: str) -> str:
+        if name.startswith("models/"):
+            return name
+        return f"models/{name}"
+
+    def _resolve_model_name(self) -> str:
+        """Resolve a usable generateContent model name for the active API key."""
+        preferred = self._normalize_model_name(self.model_name)
+
+        # Ordered fallbacks for broad compatibility across Gemini account tiers.
+        fallback_candidates = [
+            preferred,
+            "models/gemini-2.0-flash",
+            "models/gemini-flash-latest",
+            "models/gemini-2.5-flash",
+            "models/gemini-2.0-flash-lite",
+        ]
+
+        # De-duplicate while preserving order.
+        ordered_candidates = []
+        for model_name in fallback_candidates:
+            if model_name not in ordered_candidates:
+                ordered_candidates.append(model_name)
+
+        try:
+            available = {
+                m.name
+                for m in genai.list_models()
+                if "generateContent" in getattr(m, "supported_generation_methods", [])
+            }
+            for model_name in ordered_candidates:
+                if model_name in available:
+                    if model_name != preferred:
+                        logger.warning(
+                            "Configured Gemini model '%s' unavailable. Falling back to '%s'.",
+                            preferred,
+                            model_name,
+                        )
+                    return model_name
+        except Exception as e:
+            logger.warning(f"Could not list Gemini models; using configured model directly: {e}")
+
+        # Last resort: try the configured model name and let API return a clear error if invalid.
+        return preferred
     
     def extract_text_from_gcs(self, gcs_key: str) -> Tuple[Optional[str], Optional[float], Optional[str]]:
         """
@@ -44,8 +90,9 @@ class GeminiVisionService:
                 # Fallback purely for safety, though API enforces PDF currently
                 mime_type = "image/jpeg"
                 
-            logger.info(f"Calling Gemini Vision model '{self.model_name}' for OCR")
-            model = genai.GenerativeModel(self.model_name)
+            resolved_model_name = self._resolve_model_name()
+            logger.info(f"Calling Gemini Vision model '{resolved_model_name}' for OCR")
+            model = genai.GenerativeModel(resolved_model_name)
             
             prompt = (
                 "You are an expert OCR and document understanding system. "

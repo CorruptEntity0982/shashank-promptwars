@@ -104,7 +104,7 @@ async def upload_document(
                 detail=error_msg or "Invalid PDF file"
             )
         
-        # Upload to GCS
+        # Upload to configured object storage (GCS or local fallback)
         s3_key = gcs_service.upload_file(
             file_content=file_content,
             file_name=file.filename,
@@ -115,7 +115,7 @@ async def upload_document(
         if not s3_key:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to upload file to S3"
+                detail="Failed to upload file to document storage"
             )
         
         # Create database record with UUID and initial status
