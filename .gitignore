@@ -44,3 +44,7 @@ htmlcov/
 
 # Logs
 *.log
+
+# Secrets and credentials
+.secrets
+secrets/
