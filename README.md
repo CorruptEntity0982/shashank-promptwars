@@ -176,6 +176,24 @@ AWS_REGION=us-east-1
 
 # Application Configuration
 ENVIRONMENT=development
+
+# GCP / Gemini Configuration
+GCP_PROJECT_ID=your-gcp-project-id
+GCS_BUCKET_NAME=your-gcs-bucket-name
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-2.0-flash
+
+# Google Application Credentials for Docker (mounted to /gcp)
+GCP_CREDENTIALS_DIR=./secrets
+GCP_CREDENTIALS_FILE=service-account.json
+```
+
+Create the credentials directory and place your service account key here:
+
+```bash
+mkdir -p secrets
+# copy your downloaded key file to:
+# ./secrets/service-account.json
 ```
 
 ### 3. Build Docker Containers

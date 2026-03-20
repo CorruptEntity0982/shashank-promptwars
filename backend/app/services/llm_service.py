@@ -18,6 +18,59 @@ class LLMService:
         genai.configure(api_key=settings.gemini_api_key)
         self.model_name = settings.gemini_model
         logger.info(f"Initialized LLM service with Gemini model: {self.model_name}")
+
+    @staticmethod
+    def _normalize_model_name(name: str) -> str:
+        if name.startswith("models/"):
+            return name
+        return f"models/{name}"
+
+    def _resolve_model_candidates(self) -> list[str]:
+        preferred = self._normalize_model_name(self.model_name)
+        fallback_candidates = [
+            preferred,
+            "models/gemini-2.5-flash",
+            "models/gemini-flash-latest",
+            "models/gemini-2.5-flash-lite",
+            "models/gemini-flash-lite-latest",
+            "models/gemini-2.0-flash-lite",
+            "models/gemini-2.0-flash",
+        ]
+
+        ordered_candidates = []
+        for model_name in fallback_candidates:
+            if model_name not in ordered_candidates:
+                ordered_candidates.append(model_name)
+
+        try:
+            available = {
+                m.name
+                for m in genai.list_models()
+                if "generateContent" in getattr(m, "supported_generation_methods", [])
+            }
+            matched = [m for m in ordered_candidates if m in available]
+            if matched and matched[0] != preferred:
+                logger.warning(
+                    "Configured Gemini model '%s' unavailable. Falling back to '%s'.",
+                    preferred,
+                    matched[0],
+                )
+            if matched:
+                return matched
+        except Exception as e:
+            logger.warning(f"Could not list Gemini models; using configured model directly: {e}")
+
+        return ordered_candidates
+
+    @staticmethod
+    def _is_model_selection_error(error_text: str) -> bool:
+        normalized = error_text.lower()
+        return (
+            "not found" in normalized
+            or "not supported" in normalized
+            or "no longer available" in normalized
+            or "unsupported" in normalized
+        )
     
     def extract_structured_data(self, raw_text: str) -> Optional[Dict]:
         """
@@ -35,18 +88,35 @@ class LLMService:
             # Construct the extraction prompt
             prompt = self._build_extraction_prompt(raw_text)
             
-            # Call Gemini API
-            model = genai.GenerativeModel(self.model_name)
-            
-            # Force JSON response via generation config if supported, otherwise rely on prompt rules
-            # gemini-1.5-flash and pro support response_mime_type="application/json"
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
-                    response_mime_type="application/json",
-                    temperature=0.0,  # Deterministic output
-                )
-            )
+            response = None
+            last_error: Optional[Exception] = None
+            for candidate in self._resolve_model_candidates():
+                try:
+                    logger.info(f"Running structured extraction with Gemini model: {candidate}")
+                    model = genai.GenerativeModel(candidate)
+
+                    # Force JSON response via generation config if supported, otherwise rely on prompt rules.
+                    response = model.generate_content(
+                        prompt,
+                        generation_config=genai.types.GenerationConfig(
+                            response_mime_type="application/json",
+                            temperature=0.0,  # Deterministic output
+                        )
+                    )
+                    break
+                except Exception as model_error:
+                    last_error = model_error
+                    if self._is_model_selection_error(str(model_error)):
+                        logger.warning(
+                            "Gemini model '%s' failed due to availability; trying next candidate. Error: %s",
+                            candidate,
+                            model_error,
+                        )
+                        continue
+                    raise
+
+            if response is None:
+                raise RuntimeError(f"All Gemini model candidates failed. Last error: {last_error}")
             
             # Parse response
             extracted_text = response.text

@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     gcs_bucket_name: Optional[str] = None
     local_storage_path: str = "/tmp/openclaims_uploads"
     gemini_api_key: Optional[str] = None
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-2.5-flash"
     gcp_cloud_sql_connection_name: Optional[str] = None
     
     app_name: str = "OpenClaims API"

@@ -39,6 +39,7 @@ services:
       - "8000:8000"
     volumes:
       - uploads_data:/tmp/openclaims_uploads
+      - ${GCP_CREDENTIALS_DIR:-./secrets}:/gcp:ro
     environment:
       POSTGRES_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379/0
@@ -47,8 +48,9 @@ services:
       NEO4J_PASSWORD: password
       GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
       GCS_BUCKET_NAME: ${GCS_BUCKET_NAME:-}
+      GOOGLE_APPLICATION_CREDENTIALS: /gcp/${GCP_CREDENTIALS_FILE:-service-account.json}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
       DEBUG: "false"
     depends_on:
       redis:
@@ -67,6 +69,7 @@ services:
     command: celery -A celery_worker.celery_app worker --loglevel=info
     volumes:
       - uploads_data:/tmp/openclaims_uploads
+      - ${GCP_CREDENTIALS_DIR:-./secrets}:/gcp:ro
     environment:
       POSTGRES_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379/0
@@ -75,8 +78,9 @@ services:
       NEO4J_PASSWORD: password
       GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
       GCS_BUCKET_NAME: ${GCS_BUCKET_NAME:-}
+      GOOGLE_APPLICATION_CREDENTIALS: /gcp/${GCP_CREDENTIALS_FILE:-service-account.json}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
     depends_on:
       redis:
         condition: service_healthy
