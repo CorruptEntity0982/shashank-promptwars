@@ -6,6 +6,7 @@ from app.config import settings
 from app.services.gcs_service import gcs_service
 import logging
 from typing import Tuple, Optional
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,8 @@ class GeminiVisionService:
         """Initialize Gemini client"""
         genai.configure(api_key=settings.gemini_api_key)
         self.model_name = settings.gemini_model
+        self._cached_candidates: list[str] | None = None
+        self._cache_expires_at: datetime | None = None
 
     @staticmethod
     def _normalize_model_name(name: str) -> str:
@@ -26,6 +29,10 @@ class GeminiVisionService:
 
     def _resolve_model_candidates(self) -> list[str]:
         """Resolve ordered generateContent model candidates for the active API key."""
+        now = datetime.utcnow()
+        if self._cached_candidates and self._cache_expires_at and now < self._cache_expires_at:
+            return self._cached_candidates
+
         preferred = self._normalize_model_name(self.model_name)
 
         # Ordered fallbacks for broad compatibility across Gemini account tiers.
@@ -59,11 +66,15 @@ class GeminiVisionService:
                     matched[0],
                 )
             if matched:
+                self._cached_candidates = matched
+                self._cache_expires_at = now + timedelta(minutes=10)
                 return matched
         except Exception as e:
             logger.warning(f"Could not list Gemini models; using configured model directly: {e}")
 
         # Last resort: try known candidates in configured order and let API errors guide fallback.
+        self._cached_candidates = ordered_candidates
+        self._cache_expires_at = now + timedelta(minutes=10)
         return ordered_candidates
 
     @staticmethod

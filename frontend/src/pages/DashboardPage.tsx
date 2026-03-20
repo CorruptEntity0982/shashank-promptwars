@@ -147,34 +147,49 @@ export default function DashboardPage() {
         </div>
         <form className="upload-form" onSubmit={handleUploadSubmit}>
           <div>
-            <div className="field-label">Patient ID</div>
+            <label className="field-label" htmlFor="patient-id-input">
+              Patient ID
+            </label>
             <input
+              id="patient-id-input"
               className="text-input"
               placeholder="Paste an existing patient UUID (from /patients)"
+              aria-describedby="patient-id-help"
               value={uploadState.patientId}
               onChange={(e) =>
                 setUploadState((prev) => ({ ...prev, patientId: e.target.value }))
               }
             />
+            <div id="patient-id-help" className="muted-text">
+              Enter the patient identifier used by your care system.
+            </div>
           </div>
           <div className="field-row">
             <div>
-              <div className="field-label">PDF file</div>
+              <label className="field-label" htmlFor="pdf-file-input">
+                PDF file
+              </label>
               <input
+                id="pdf-file-input"
                 type="file"
                 accept="application/pdf"
                 className="file-input"
+                aria-describedby="pdf-help"
                 onChange={(e) => {
                   const file = e.target.files?.[0] ?? null;
                   setUploadState((prev) => ({ ...prev, file }));
                 }}
               />
+              <div id="pdf-help" className="muted-text">
+                Upload a single PDF up to 50 MB.
+              </div>
             </div>
             <div style={{ alignSelf: "flex-end" }}>
               <button
                 type="submit"
                 className="primary-button"
                 disabled={uploadState.isSubmitting}
+                aria-busy={uploadState.isSubmitting}
               >
                 {uploadState.isSubmitting ? "Uploading…" : "Upload & process"}
               </button>
@@ -182,7 +197,7 @@ export default function DashboardPage() {
             </div>
           </div>
           {uploadState.error && (
-            <div className="muted-text" style={{ color: "#f97373" }}>
+            <div className="muted-text" style={{ color: "#f97373" }} role="alert" aria-live="assertive">
               {uploadState.error}
             </div>
           )}
@@ -198,6 +213,7 @@ export default function DashboardPage() {
               type="button"
               className="pill-button"
               onClick={() => setPolling((p) => !p)}
+              aria-pressed={polling}
             >
               {polling ? "Pause" : "Resume"}
             </button>
@@ -253,7 +269,7 @@ export default function DashboardPage() {
           )}
         </div>
         {hasActiveProcessing && (
-          <div className="muted-text" style={{ marginTop: 6 }}>
+          <div className="muted-text" style={{ marginTop: 6 }} aria-live="polite">
             We&apos;ll refresh the table every {POLL_INTERVAL_MS / 1000} seconds while tasks are
             processing.
           </div>

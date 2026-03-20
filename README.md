@@ -1,868 +1,128 @@
-# 🏥 Lattice: Healthcare Document Intelligence Platform
+# Lattice: Gemini-Powered Healthcare Intelligence
 
-**Lattice** is an intelligent medical document processing system powered by **Google Cloud Platform** that extracts structured healthcare data from PDFs and builds a comprehensive knowledge graph for patient care analysis.
+Lattice is a healthcare document intelligence platform that converts messy, unstructured medical PDFs into structured, validated, and actionable records using Google Cloud Platform services.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.11-blue.svg)
-![TypeScript](https://img.shields.io/badge/typescript-5+-blue.svg)
-![Neo4j](https://img.shields.io/badge/neo4j-5.15-green.svg)
-![Google Cloud](https://img.shields.io/badge/google%20cloud-platform-yellow.svg)
+## Public Repository Link
+- https://github.com/<your-username>/Lattice
 
----
+## Chosen Vertical
+- Healthcare administrative workflow automation
 
-## 📋 Quick Links
+## Application Use Case (6-7 Lines)
+Lattice is a Gemini-powered healthcare app that transforms unstructured medical documents into structured patient intelligence.
+It acts as a bridge between human intent (clinical decisions) and complex systems (claims, records, and care workflows).
+Using Google Gemini Vision and Gemini LLM APIs, it extracts entities like patient details, encounters, claims, and conditions.
+Structured outputs are stored in PostgreSQL and linked in Neo4j as a healthcare knowledge graph.
+Care teams can track processing status, review validated JSON, and explore patient relationships in a single interface.
+This reduces manual data entry, lowers transcription errors, and improves continuity of care.
+The impact is strongest in high-volume hospitals and resource-constrained community clinics.
 
-- [Vertical & Problem](#-vertical--problem-statement)
-- [Approach](#-approach--logic)
-- [How It Works](#-how-it-works)
-- [Features](#-features)
-- [Architecture](#-architecture)
-- [Tech Stack](#-technology-stack)
-- [Installation](#-installation)
-- [Running](#-running-the-application)
-- [Google Cloud Integration](#-google-cloud-services-integration)
-- [API Docs](#-api-documentation)
-- [Security](#-security)
-- [Assumptions](#-assumptions)
+## Approach and Logic
+1. Ingest PDF and store it in Google Cloud Storage.
+2. Extract raw text with Gemini Vision.
+3. Convert text to schema-validated JSON with Gemini LLM.
+4. Persist structured data in PostgreSQL and relationships in Neo4j.
+5. Expose document status and graph insights through a FastAPI + React interface.
 
----
+## How the Solution Works
+1. User uploads PDF from dashboard.
+2. Backend validates MIME type, size, and page count.
+3. File is stored in GCS (with local fallback for resilience).
+4. Celery processes the document asynchronously.
+5. Gemini Vision extracts document text.
+6. Gemini LLM produces structured medical entities.
+7. Entities are validated and ingested into PostgreSQL + Neo4j.
 
-## 🎯 Vertical & Problem Statement
+## Assumptions
+- Google Cloud project has Gemini APIs enabled.
+- Service account key is mounted at secrets/service-account.json.
+- Documents are primarily English healthcare PDFs.
+- At least one Gemini model is available for generateContent.
 
-### Healthcare Administrative Workflow Automation
+## Architecture
+- Frontend: React + TypeScript
+- API Layer: FastAPI
+- Async Pipeline: Celery + Redis
+- Relational Storage: PostgreSQL
+- Graph Storage: Neo4j
+- Cloud Services: GCS + Gemini APIs
 
-**Problem**: Medical professionals spend hours manually extracting and organizing data from unstructured PDF documents (claims, EOBs, encounter summaries). This manual process is:
-- **Time-consuming**: 10+ hours per week on data entry
-- **Error-prone**: Human transcription errors compromise patient safety
-- **Costly**: Labor-intensive process increases operational overhead
-- **Disconnected**: No unified view of patient history across documents
+## Google Cloud Services Integration
+### Google Cloud Storage (GCS)
+- Stores uploaded source documents securely.
+- Supports document metadata and retrieval for processing.
 
-**Solution**: Lattice uses **Google Cloud Platform's AI services** to automatically extract medical entities, create structured data, and build a searchable knowledge graph of patient relationships.
+### Gemini Vision API
+- Extracts text from PDF content and preserves document context.
 
----
+### Gemini LLM API
+- Converts extracted text into structured healthcare entities.
+- Uses deterministic JSON response settings for reliability.
 
-## 🧠 Approach & Logic
+### Reliability Strategy
+- Ordered model fallback: gemini-2.5-flash -> gemini-flash-latest -> gemini-2.0-flash-lite
+- Model availability error handling with retry
+- Local storage fallback when cloud auth is unavailable
 
-### Three-Phase Processing Pipeline
+## Evaluation Focus Coverage
+### 1) Code Quality
+- Clear layering: routes, services, tasks, schemas
+- Type hints and explicit response models
+- Separation of concerns for maintainability
 
-**Phase 1: Document Ingestion & Text Extraction**
-- Input: Raw PDF files
-- Process: **Google Gemini Vision API** extracts text from medical documents
-- Output: Raw text content
+### 2) Security
+- Secrets excluded from git (secrets/, .env)
+- Input validation for file type, size, and page count
+- Sanitized file names for storage paths
+- Internal exception details not leaked in API errors
 
-**Phase 2: ai-Powered Structured Extraction**
-- Input: Extracted text
-- Process: **Google Gemini LLM API** parses medical entities using domain-specific prompts
-- Extracts: Patients, Encounters, Claims, Conditions, Providers, Hospitals
-- Output: Validated JSON structures
+### 3) Efficiency
+- Asynchronous background processing with Celery
+- Gemini model candidate caching reduces repeated metadata calls
+- Bounded pagination prevents expensive list queries
 
-**Phase 3: Knowledge Graph Construction**
-- Input: Structured entities
-- Process: Neo4j creates nodes and relationships
-- Output: Interactive healthcare knowledge graph
+### 4) Testing and Maintainability
+- Unit tests added for PDF validation behavior
+- Pydantic schema validation for extraction output
+- Service-level modularity for easier upgrades
 
-### Key Design Decisions
+### 5) Usability and Accessibility
+- Upload and status workflows are simple and task-focused
+- Form labels and ARIA attributes added for assistive technologies
+- Clear status messaging and recoverable errors
 
-| Component | Choice | Why |
-|-----------|--------|-----|
-| **Text Extraction** | Gemini Vision API | Accurate medical PDF parsing without AWS Textract |
-| **Entity Recognition** | Gemini LLM with prompting | Zero-shot learning on medical concepts |
-| **Storage** | GCS + PostgreSQL | Cloud-native, scalable, cost-efficient |
-| **Async Processing** | Celery + Redis | Non-blocking document processing |
-| **Graph Database** | Neo4j | Enable relationship queries and clinical insights |
+### 6) Meaningful GCP Usage
+- GCS for storage
+- Gemini Vision for extraction
+- Gemini LLM for structuring and interpretation
+- GCP-first architecture with service-account authentication
 
----
+## Complete Project Code in Repository
+Repository includes:
+- backend/ (FastAPI, Celery, services, migrations)
+- frontend/ (React TypeScript UI)
+- docker-compose.yml (local orchestration)
+- README.md (setup, architecture, assumptions, and evaluation mapping)
 
-## ⚙️ How It Works
-
-```
-1. User uploads PDF
-   ↓
-2. FastAPI stores file in Google Cloud Storage (GCS)
-   ↓
-3. Celery worker picks up processing task
-   ↓
-4. Google Gemini Vision API extracts text from PDF
-   ↓
-5. Google Gemini LLM API parses entities (Pydantic validation)
-   ↓
-6. Neo4j ingests entities and creates relationships
-   ↓
-7. Frontend displays results with interactive graph
-```
-
-**Auto-Fallback on Model Unavailability**:
-- Primary model: `gemini-2.5-flash`
-- Fallbacks: `gemini-flash-latest` → `gemini-2.0-flash-lite`
-- Ensures reliability even if primary model reaches quota
-
----
-
-## ✨ Features
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Client Browser                           │
-│                  (React + Next.js UI)                        │
-└────────────────────────┬────────────────────────────────────┘
-                         │ HTTP
-                         ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    Nginx Reverse Proxy                       │
-│              (Routes /api/* to Backend)                      │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-        ┌────────────────┴──────────────┐
-        ↓                               ↓
-┌───────────────────┐         ┌──────────────────┐
-│  FastAPI Backend  │         │  Next.js Server  │
-│   (Port 3000)     │         │   (Port 8000)    │
-└────────┬──────────┘         └──────────────────┘
-         │
-    ┌────┼────────────────────┐
-    ↓    ↓                    ↓
-┌────────┐  ┌────────┐   ┌────────┐
-│Postgres│  │ Redis  │   │ Neo4j  │
-│  (DB)  │  │(Queue) │   │(Graph) │
-└────────┘  └───┬────┘   └────────┘
-                ↓
-        ┌───────────────┐
-        │ Celery Worker │
-        │ (Processing)  │
-        └───────────────┘
-```
-
-### Data Flow
-
-1. **Upload**: User uploads PDF → FastAPI stores in PostgreSQL
-2. **Queue**: FastAPI enqueues processing task → Redis/Celery
-3. **Extract**: Celery worker uses AWS Textract to extract text
-4. **Process**: OpenAI GPT-4o extracts structured medical entities
-5. **Store**: Structured data saved to PostgreSQL (JSONB)
-6. **Graph**: Neo4j graph updated with entities and relationships
-7. **Visualize**: Frontend displays data and interactive graph
-
----
-
-## 🛠️ Technology Stack
-
-### Backend
-- **FastAPI** (Python 3.11): High-performance async API framework
-- **PostgreSQL 15**: Relational database for document metadata
-- **Neo4j 5.15**: Graph database for healthcare knowledge graph
-- **Redis**: Message broker for Celery task queue
-- **Celery**: Distributed task queue for async processing
-- **SQLAlchemy**: ORM for database operations
-- **Alembic**: Database migration management
-
-### AI & Processing
-- **OpenAI API** (GPT-4o): Large language model for data extraction
-- **AWS Textract**: PDF text extraction service
-- **Boto3**: AWS SDK for Python
-
-### Frontend
-- **Next.js 16.1.6**: React framework with server-side rendering
-- **React 19.2.3**: UI component library
-- **Tailwind CSS 4**: Utility-first CSS framework
-- **TypeScript**: Type-safe JavaScript
-
-### Infrastructure
-- **Docker & Docker Compose**: Container orchestration
-- **Nginx**: Reverse proxy and load balancer
-- **Python 3.11-slim**: Backend container image
-- **Node 20-alpine**: Frontend container image
-
----
-
-## 📦 Prerequisites
-
-Before you begin, ensure you have the following installed:
-
-- **Docker Desktop** (v20.10+)
-- **Docker Compose** (v2.0+)
-- **Git**
-- **OpenAI API Key** (for GPT-4o access)
-- **AWS Credentials** (for Textract - optional but recommended)
-
-### System Requirements
-- **CPU**: 4+ cores recommended
-- **RAM**: 8GB minimum, 16GB recommended
-- **Disk**: 10GB free space
-- **OS**: macOS, Linux, or Windows with WSL2
-
----
-
-## 🚀 Installation
-
-### 1. Clone the Repository
-
-```bash
-git clone <repository-url>
-cd Lattice
-```
-
-### 2. Set Up Environment Variables
-
-Create a `.env` file in the root directory:
-
-```bash
-# Database Configuration
-POSTGRES_USER=Lattice
-POSTGRES_PASSWORD=your_secure_password_here
-POSTGRES_DB=Lattice
-
-# Neo4j Configuration
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=your_neo4j_password_here
-
-# OpenAI Configuration
-OPENAI_API_KEY=sk-your-openai-api-key-here
-
-# AWS Configuration (Optional - for Textract)
-AWS_ACCESS_KEY_ID=your_aws_access_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-AWS_REGION=us-east-1
-
-# Application Configuration
-ENVIRONMENT=development
-
-# GCP / Gemini Configuration
-GCP_PROJECT_ID=your-gcp-project-id
-GCS_BUCKET_NAME=your-gcs-bucket-name
-GEMINI_API_KEY=your-gemini-api-key
-GEMINI_MODEL=gemini-2.0-flash
-
-# Google Application Credentials for Docker (mounted to /gcp)
-GCP_CREDENTIALS_DIR=./secrets
-GCP_CREDENTIALS_FILE=service-account.json
-```
-
-Create the credentials directory and place your service account key here:
-
-```bash
-mkdir -p secrets
-# copy your downloaded key file to:
-# ./secrets/service-account.json
-```
-
-### 3. Build Docker Containers
-
+## Local Run
 ```bash
 docker compose build
-```
-
-This will build:
-- Backend (FastAPI)
-- Frontend (Next.js)
-- Celery Worker
-- PostgreSQL
-- Neo4j
-- Redis
-- Nginx
-
----
-
-## ⚙️ Configuration
-
-### Backend Configuration
-
-Edit `backend/app/config.py` to customize:
-
-```python
-DATABASE_URL = "postgresql://..."  # Auto-configured from .env
-NEO4J_URI = "bolt://neo4j:7687"   # Neo4j connection
-OPENAI_API_KEY = "sk-..."         # OpenAI API key
-```
-
-### Neo4j Configuration
-
-Neo4j is accessible at:
-- **Browser UI**: http://localhost:7474
-- **Bolt Protocol**: bolt://localhost:7687
-- **Username**: `neo4j`
-- **Password**: From `.env` file
-
-### Nginx Configuration
-
-Edit `infra/nginx.conf` to customize:
-- Port mappings
-- Upload size limits (default: 100MB)
-- Proxy timeout settings
-
----
-
-## 🎯 Running the Application
-
-### Start All Services
-
-```bash
 docker compose up -d
-```
-
-This starts all services in detached mode:
-- ✅ PostgreSQL (port 5432)
-- ✅ Neo4j (ports 7474, 7687)
-- ✅ Redis (port 6379)
-- ✅ Backend (port 3000)
-- ✅ Frontend (port 8000)
-- ✅ Celery Worker
-- ✅ Nginx (port 80)
-
-### Check Service Status
-
-```bash
-docker compose ps
-```
-
-Expected output:
-```
-NAME                    STATUS    PORTS
-Lattice-backend      Up        0.0.0.0:3000->3000/tcp
-Lattice-celery       Up        
-Lattice-db           Up        0.0.0.0:5432->5432/tcp
-Lattice-frontend     Up        0.0.0.0:8000->8000/tcp
-Lattice-neo4j        Up        0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
-Lattice-nginx        Up        0.0.0.0:80->80/tcp
-Lattice-redis        Up        0.0.0.0:6379->6379/tcp
-```
-
-### View Logs
-
-```bash
-# All services
-docker compose logs -f
-
-# Specific service
-docker compose logs -f backend
-docker compose logs -f celery
-docker compose logs -f frontend
-```
-
-### Stop Services
-
-```bash
-docker compose down
-```
-
-### Stop and Remove Data
-
-```bash
-docker compose down -v  # Removes volumes (databases)
-```
-
----
-
-## 📘 Usage Guide
-
-### Accessing the Application
-
-1. **Main Dashboard**: http://localhost/
-2. **API Documentation**: http://localhost:3000/docs
-3. **Neo4j Browser**: http://localhost:7474
-
-### Uploading Documents
-
-#### Method 1: Regular Upload
-1. Navigate to http://localhost/
-2. Enter a **Patient ID** (UUID format recommended)
-3. Select a **PDF file** (max 50MB)
-4. Click **📤 Upload Document**
-5. Monitor processing status in the table below
-
-#### Method 2: Demo Upload
-1. Navigate to http://localhost/
-2. Select a **PDF file** in the Demo Upload section
-3. Click **🚀 Demo Upload** (uses predefined patient ID)
-4. No need to enter patient ID manually
-
-### Viewing Results
-
-#### Structured Data
-1. Wait for document status to show **✓ Completed**
-2. Click **📋 View Data** button
-3. View beautifully formatted JSON with extracted entities
-
-#### Knowledge Graph
-1. Wait for document status to show **✓ Completed**
-2. Click **🔮 View Graph** button
-3. Explore interactive graph visualization:
-   - **Patient** nodes (purple)
-   - **Encounter** nodes (blue)
-   - **Claim** nodes (green)
-   - **Condition** nodes (red)
-   - **Hospital** nodes (orange)
-   - **Provider** nodes (yellow)
-
-### Understanding Processing Status
-
-| Status      | Icon | Meaning                               |
-|-------------|------|---------------------------------------|
-| Uploaded    | ↑    | Document received, queued             |
-| Processing  | ⟳    | AI extraction in progress             |
-| Completed   | ✓    | Successfully processed                |
-| Failed      | ✗    | Error occurred (check error message)  |
-
----
-
-## 🔌 API Documentation
-
-### Interactive API Docs
-
-FastAPI provides auto-generated interactive documentation:
-
-- **Swagger UI**: http://localhost:3000/docs
-- **ReDoc**: http://localhost:3000/redoc
-
-### Key Endpoints
-
-#### Upload Document
-```bash
-POST /documents/upload
-Content-Type: multipart/form-data
-
-Parameters:
-- patient_id: string (UUID recommended)
-- file: PDF file (max 50MB)
-
-Response:
-{
-  "id": "doc-uuid",
-  "patient_id": "patient-uuid",
-  "file_name": "document.pdf",
-  "status": "uploaded"
-}
-```
-
-#### List Documents
-```bash
-GET /documents/
-
-Response:
-[
-  {
-    "id": "doc-uuid",
-    "patient_id": "patient-uuid",
-    "file_name": "document.pdf",
-    "status": "completed",
-    "structured_data": { ... },
-    "created_at": "2026-03-03T10:00:00",
-    "processed_at": "2026-03-03T10:02:30"
-  }
-]
-```
-
-#### Get Patient Graph
-```bash
-GET /patients/{patient_id}/graph
-
-Response:
-{
-  "nodes": [
-    {
-      "id": "node-1",
-      "label": "Patient",
-      "properties": { ... }
-    }
-  ],
-  "relationships": [
-    {
-      "source": "node-1",
-      "target": "node-2",
-      "type": "HAD_ENCOUNTER"
-    }
-  ]
-}
-```
-
-#### Health Check
-```bash
-GET /health
-
-Response:
-{
-  "status": "healthy",
-  "timestamp": "2026-03-03T10:00:00",
-  "services": {
-    "database": "connected",
-    "neo4j": "connected",
-    "redis": "connected"
-  }
-}
-```
-
----
-
-## 🕸️ Knowledge Graph Structure
-
-### Node Types
-
-```cypher
-// Patient Node
-(:Patient {
-  id: "uuid",
-  name: "John Doe",
-  date_of_birth: "1980-01-01",
-  gender: "Male"
-})
-
-// Encounter Node
-(:Encounter {
-  id: "uuid",
-  date: "2026-03-01",
-  type: "Outpatient",
-  diagnosis: "Annual Checkup"
-})
-
-// Claim Node
-(:Claim {
-  id: "uuid",
-  claim_number: "CLM123456",
-  total_amount: 250.00,
-  date_of_service: "2026-03-01"
-})
-
-// Condition Node
-(:Condition {
-  id: "uuid",
-  code: "E11.9",
-  description: "Type 2 diabetes mellitus",
-  status: "active"
-})
-
-// Hospital Node
-(:Hospital {
-  id: "uuid",
-  name: "General Hospital",
-  address: "123 Main St"
-})
-
-// Provider Node
-(:Provider {
-  id: "uuid",
-  name: "Dr. Smith",
-  specialty: "Family Medicine",
-  npi: "1234567890"
-})
-```
-
-### Relationship Types
-
-```cypher
-(Patient)-[:HAD_ENCOUNTER]->(Encounter)
-(Patient)-[:HAS_CONDITION]->(Condition)
-(Encounter)-[:RESULTED_IN_CLAIM]->(Claim)
-(Encounter)-[:AT_HOSPITAL]->(Hospital)
-(Encounter)-[:TREATED_BY]->(Provider)
-(Claim)-[:COVERS_CONDITION]->(Condition)
-```
-
-### Example Cypher Queries
-
-```cypher
-// Find all encounters for a patient
-MATCH (p:Patient {id: $patient_id})-[:HAD_ENCOUNTER]->(e:Encounter)
-RETURN e
-ORDER BY e.date DESC
-
-// Find all conditions for a patient
-MATCH (p:Patient {id: $patient_id})-[:HAS_CONDITION]->(c:Condition)
-RETURN c
-
-// Find patient's care network
-MATCH (p:Patient {id: $patient_id})-[:HAD_ENCOUNTER]->(e:Encounter)
-      -[:TREATED_BY]->(prov:Provider)
-RETURN p, e, prov
-```
-
----
-
-## 📁 Project Structure
-
-```
-Lattice/
-├── backend/                    # FastAPI Backend
-│   ├── alembic/               # Database migrations
-│   │   └── versions/          # Migration scripts
-│   ├── app/
-│   │   ├── models/            # SQLAlchemy models
-│   │   │   ├── document.py    # Document model
-│   │   │   └── patient.py     # Patient model
-│   │   ├── routes/            # API endpoints
-│   │   │   ├── documents.py   # Document routes
-│   │   │   ├── patients.py    # Patient routes
-│   │   │   └── health.py      # Health check
-│   │   ├── schemas/           # Pydantic schemas
-│   │   │   └── structured_document.py
-│   │   ├── services/          # Business logic
-│   │   │   ├── llm_service.py       # OpenAI integration
-│   │   │   ├── textract_service.py  # AWS Textract
-│   │   │   ├── graph_service.py     # Neo4j operations
-│   │   │   ├── s3_service.py        # S3 operations
-│   │   │   └── pdf_service.py       # PDF processing
-│   │   ├── tasks/             # Celery tasks
-│   │   │   └── document_tasks.py
-│   │   ├── workflows/         # LangGraph workflows
-│   │   │   └── medical_extraction_graph.py
-│   │   ├── config.py          # Configuration
-│   │   ├── database.py        # Database setup
-│   │   └── main.py            # FastAPI app
-│   ├── alembic.ini            # Alembic config
-│   ├── celery_worker.py       # Celery worker entry
-│   ├── requirements.txt       # Python dependencies
-│   └── Dockerfile             # Backend Docker image
-│
-├── frontend/                   # Next.js Frontend
-│   ├── app/
-│   │   ├── components/        # React components
-│   │   │   ├── DocumentUpload.tsx
-│   │   │   ├── DocumentList.tsx
-│   │   │   ├── GraphVisualization.tsx
-│   │   │   └── StructuredDataModal.tsx
-│   │   ├── layout.tsx         # Root layout
-│   │   └── page.tsx           # Main dashboard
-│   ├── package.json           # Node dependencies
-│   ├── tsconfig.json          # TypeScript config
-│   ├── tailwind.config.ts     # Tailwind config
-│   ├── next.config.ts         # Next.js config
-│   └── Dockerfile             # Frontend Docker image
-│
-├── infra/
-│   └── nginx.conf             # Nginx configuration
-│
-├── design-docs/               # Design documentation
-│   ├── design.md
-│   ├── pitch.md
-│   └── requirements.md
-│
-├── docker-compose.yml         # Docker orchestration
-├── .env                       # Environment variables
-└── README.md                  # This file
-```
-
----
-
-## 🔧 Development
-
-### Running Backend Locally
-
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 3000
-```
-
-### Running Frontend Locally
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### Running Database Migrations
-
-```bash
-# Create a new migration
-docker compose exec backend alembic revision --autogenerate -m "description"
-
-# Apply migrations
-docker compose exec backend alembic upgrade head
-
-# Rollback migration
-docker compose exec backend alembic downgrade -1
-```
-
-### Running Celery Worker Locally
-
-```bash
-cd backend
-celery -A celery_worker worker --loglevel=info
-```
-
-### Accessing PostgreSQL
-
-```bash
-docker compose exec db psql -U Lattice -d Lattice
-```
-
-### Accessing Neo4j
-
-```bash
-# Via Browser
-open http://localhost:7474
-
-# Via Cypher Shell
-docker compose exec neo4j cypher-shell -u neo4j -p <password>
-```
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### Port Already in Use
-```bash
-# Check what's using the port
-lsof -i :80  # or :3000, :7474, etc.
-
-# Kill the process or change ports in docker-compose.yml
-```
-
-#### Docker Build Fails
-```bash
-# Clear Docker cache and rebuild
-docker compose down -v
-docker system prune -a
-docker compose build --no-cache
-docker compose up -d
-```
-
-#### Frontend Not Loading
-```bash
-# Check frontend logs
-docker compose logs frontend
-
-# Rebuild frontend
-docker compose up -d --build frontend
-```
-
-#### Celery Not Processing Tasks
-```bash
-# Check Celery logs
-docker compose logs celery
-
-# Restart Celery worker
-docker compose restart celery
-```
-
-#### Neo4j Connection Error
-```bash
-# Check Neo4j status
-docker compose logs neo4j
-
-# Restart Neo4j
-docker compose restart neo4j
-
-# Wait 30 seconds for Neo4j to fully start
-```
-
-#### OpenAI API Errors
-- Verify your API key in `.env`
-- Check your OpenAI account has credits
-- Ensure GPT-4o access is enabled
-
-#### Database Migration Issues
-```bash
-# Reset database (WARNING: deletes all data)
-docker compose down -v
-docker compose up -d db
 docker compose exec backend alembic upgrade head
 ```
 
-### Debug Mode
-
-Enable debug logging:
-
+## Validation
 ```bash
-# Backend
-docker compose exec backend bash
-export LOG_LEVEL=DEBUG
-uvicorn app.main:app --reload
-```
-
-### Health Checks
-
-```bash
-# Check all services
-curl http://localhost/api/health
-
-# Check backend directly
 curl http://localhost:3000/health
-
-# Check frontend
-curl http://localhost:8000
+docker compose exec backend pytest -q
 ```
 
----
+## API Endpoints
+- POST /documents/upload
+- GET /documents/
+- GET /documents/{document_id}
+- GET /documents/{document_id}/graph
+- GET /health
 
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
-4. **Push** to the branch (`git push origin feature/amazing-feature`)
-5. **Open** a Pull Request
-
-### Code Style
-
-- **Python**: Follow PEP 8, use Black formatter
-- **TypeScript**: Follow ESLint rules, use Prettier
-- **Commits**: Use conventional commit messages
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- **OpenAI** for GPT-4o API
-- **Neo4j** for graph database technology
-- **FastAPI** for the excellent Python framework
-- **Next.js** for the React framework
-- **Tailwind CSS** for beautiful styling
-
----
-
-## 📞 Support
-
-For issues, questions, or suggestions:
-
-- 🐛 **Bug Reports**: Open an issue on GitHub
-- 💡 **Feature Requests**: Open an issue with [Feature Request] tag
-- 📧 **Email**: support@Lattice.example.com
-- 💬 **Discussions**: Use GitHub Discussions
-
----
-
-## 🗺️ Roadmap
-
-### Phase 1 (Current)
-- ✅ PDF document upload
-- ✅ AI-powered extraction
-- ✅ Neo4j knowledge graph
-- ✅ Interactive visualizations
-- ✅ Dark theme UI
-
-### Phase 2 (Planned)
-- 🔄 Multi-document batch processing
-- 🔍 Advanced search and filtering
-- 📊 Analytics dashboard
-- 🔐 User authentication
-- 👥 Multi-tenant support
-
-### Phase 3 (Future)
-- 🤖 Predictive analytics
-- 📱 Mobile app
-- 🌐 FHIR API integration
-- 🔔 Real-time notifications
-- 📈 Business intelligence reports
-
----
-
-**Built with ❤️ for healthcare innovation**
-
-Version: 1.0.0  
-Last Updated: March 3, 2026
+## License
+MIT

@@ -1,7 +1,7 @@
 """
 Document routes for PDF upload and management
 """
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.patient import Patient
@@ -12,7 +12,6 @@ from app.services.gcs_service import gcs_service
 from app.services.pdf_service import validate_pdf
 from celery_worker import celery_app
 import logging
-import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +20,8 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 @router.get("/", response_model=list[DocumentResponse])
 async def list_documents(
-    limit: int = 100,
-    offset: int = 0,
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     status: str | None = None,
     db: Session = Depends(get_db)
 ):
@@ -66,7 +65,8 @@ async def upload_document(
     - PDF has 0-40 pages
     - Patient exists
     
-    Uploads to S3, stores metadata in database, and enqueues Celery task for Textract processing
+    Uploads to configured storage, stores metadata in database,
+    and enqueues Celery task for Gemini-based processing.
     """
     try:
         # Validate patient exists
@@ -105,14 +105,14 @@ async def upload_document(
             )
         
         # Upload to configured object storage (GCS or local fallback)
-        s3_key = gcs_service.upload_file(
+        storage_key = gcs_service.upload_file(
             file_content=file_content,
             file_name=file.filename,
             patient_id=patient_id,
             content_type="application/pdf"
         )
         
-        if not s3_key:
+        if not storage_key:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to upload file to document storage"
@@ -122,7 +122,7 @@ async def upload_document(
         new_document = Document(
             patient_id=patient_id,
             file_name=file.filename,
-            s3_key=s3_key,
+            s3_key=storage_key,
             file_size=file_size,
             page_count=page_count,
             status=DocumentStatus.UPLOADED
@@ -135,7 +135,7 @@ async def upload_document(
         # Get the generated document ID
         document_id = str(new_document.id)
         
-        # Enqueue Celery task for Textract processing
+        # Enqueue Celery task for asynchronous Gemini processing
         celery_app.send_task("process_document", args=[document_id])
         
         logger.info(
@@ -149,10 +149,10 @@ async def upload_document(
         raise
     except Exception as e:
         db.rollback()
-        logger.error(f"Error uploading document: {str(e)}")
+        logger.exception("Error uploading document")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to upload document: {str(e)}"
+            detail="Failed to upload document"
         )
 
 
@@ -284,10 +284,10 @@ async def get_document_graph(
                 "relationships": formatted_relationships,
             }
     except Exception as e:
-        logger.error(f"Error fetching graph data for document {document_id}: {str(e)}")
+        logger.exception("Error fetching graph data for document %s", document_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch graph data: {str(e)}",
+            detail="Failed to fetch graph data",
         )
 
 
