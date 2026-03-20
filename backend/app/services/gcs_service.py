@@ -17,15 +17,25 @@ class GCSService:
         """Initialize GCS client"""
         # GCS client uses Application Default Credentials automatically
         self.project_id = settings.gcp_project_id
-        if self.project_id:
-            self.client = storage.Client(project=self.project_id)
-        else:
-            self.client = storage.Client()
-            
         self.bucket_name = settings.gcs_bucket_name
+        self._client = None
     
     @property
+    def client(self):
+        if self._client is None:
+            try:
+                if self.project_id:
+                    self._client = storage.Client(project=self.project_id)
+                else:
+                    self._client = storage.Client()
+            except Exception as e:
+                logger.error(f"Failed to initialize GCS client (Check GCP Credentials!): {e}")
+        return self._client
+
+    @property
     def bucket(self):
+        if not self.client:
+            return None
         return self.client.bucket(self.bucket_name)
 
     def upload_file(

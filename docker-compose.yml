@@ -1,24 +1,4 @@
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: lattice-postgres
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB: lattice
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - lattice-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # Redis Queue Broker
   redis:
     image: redis:7-alpine
@@ -58,21 +38,17 @@ services:
     ports:
       - "8000:8000"
     environment:
-      POSTGRES_URL: postgresql://postgres:postgres@postgres:5432/lattice
+      POSTGRES_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379/0
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: password
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_REGION: ${AWS_REGION:-us-east-1}
-      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
       DEBUG: "false"
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       neo4j:
@@ -88,20 +64,16 @@ services:
     container_name: lattice-worker
     command: celery -A celery_worker.celery_app worker --loglevel=info
     environment:
-      POSTGRES_URL: postgresql://postgres:postgres@postgres:5432/lattice
+      POSTGRES_URL: ${DATABASE_URL}
       REDIS_URL: redis://redis:6379/0
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: password
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_REGION: ${AWS_REGION:-us-east-1}
-      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       neo4j:
@@ -130,5 +102,4 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
   neo4j_data:

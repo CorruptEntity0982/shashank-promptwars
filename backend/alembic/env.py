@@ -14,8 +14,8 @@ import app.models  # This imports all models
 # access to the values within the .ini file in use.
 config = context.config
 
-# Override sqlalchemy.url with the one from settings
-config.set_main_option("sqlalchemy.url", settings.postgres_url)
+escaped_url = settings.postgres_url.replace("%", "%%")
+config.set_main_option("sqlalchemy.url", escaped_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
