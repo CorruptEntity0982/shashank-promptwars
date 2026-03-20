@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     gemini_api_key: Optional[str] = None
     gemini_model: str = "gemini-2.5-flash"
     gcp_cloud_sql_connection_name: Optional[str] = None
+    gcp_bigquery_dataset: Optional[str] = None
+    gcp_pubsub_topic: Optional[str] = None
     
     app_name: str = "OpenClaims API"
     debug: bool = False
