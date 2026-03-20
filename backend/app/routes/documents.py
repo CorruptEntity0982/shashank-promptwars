@@ -22,7 +22,7 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 async def list_documents(
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    status: str | None = None,
+    status: DocumentStatus | None = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -37,14 +37,7 @@ async def list_documents(
     
     # Filter by status if provided
     if status:
-        try:
-            status_enum = DocumentStatus(status.lower())
-            query = query.filter(Document.status == status_enum)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid status. Must be one of: {[s.value for s in DocumentStatus]}"
-            )
+        query = query.filter(Document.status == status)
     
     # Order by created_at descending (newest first)
     documents = query.order_by(Document.created_at.desc()).offset(offset).limit(limit).all()
@@ -69,6 +62,13 @@ async def upload_document(
     and enqueues Celery task for Gemini-based processing.
     """
     try:
+        patient_id = patient_id.strip()
+        if not patient_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Patient ID is required"
+            )
+
         # Validate patient exists
         patient = db.query(Patient).filter(Patient.id == patient_id).first()
         if not patient:
@@ -83,10 +83,23 @@ async def upload_document(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only PDF files are allowed"
             )
+
+        if not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File name is required"
+            )
         
         # Read file content
         file_content = await file.read()
         file_size = len(file_content)
+
+        # Fast signature check before deep parsing.
+        if not file_content.startswith(b"%PDF"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded file is not a valid PDF"
+            )
         
         # Validate file size (e.g., max 50MB)
         max_size = 50 * 1024 * 1024  # 50MB

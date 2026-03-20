@@ -212,6 +212,7 @@ export default function DocumentDetailPage() {
                   className={`pill-tab ${
                     viewMode === "json" ? "pill-tab-active" : ""
                   }`}
+                  aria-pressed={viewMode === "json"}
                   onClick={() => setViewMode("json")}
                 >
                   JSON
@@ -221,6 +222,7 @@ export default function DocumentDetailPage() {
                   className={`pill-tab ${
                     viewMode === "graph" ? "pill-tab-active" : ""
                   }`}
+                  aria-pressed={viewMode === "graph"}
                   onClick={() => setViewMode("graph")}
                   disabled={!document || document.status !== "completed"}
                 >
@@ -395,6 +397,9 @@ export default function DocumentDetailPage() {
                               <g
                                 key={node.id}
                                 className="graph-node-clickable"
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`Open ${node.label} node details`}
                                 onClick={() =>
                                   setSelectedNode({
                                     id: node.id,
@@ -403,6 +408,17 @@ export default function DocumentDetailPage() {
                                       {}) as Record<string, unknown>,
                                   })
                                 }
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    setSelectedNode({
+                                      id: node.id,
+                                      label: node.label,
+                                      properties: (node.properties ??
+                                        {}) as Record<string, unknown>,
+                                    });
+                                  }
+                                }}
                               >
                                 <circle
                                   cx={node.x}
@@ -436,6 +452,7 @@ export default function DocumentDetailPage() {
                           <button
                             type="button"
                             className="graph-overlay-close"
+                            aria-label="Close node details"
                             onClick={() => setSelectedNode(null)}
                           >
                             ✕

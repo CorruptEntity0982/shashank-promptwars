@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     
     app_name: str = "OpenClaims API"
     debug: bool = False
+    cors_allowed_origins: str = "http://localhost:5173,http://localhost:3000"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Parse comma-separated CORS origins from environment."""
+        return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
     
     class Config:
         env_file = ".env"

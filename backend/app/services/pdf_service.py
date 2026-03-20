@@ -9,6 +9,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def has_pdf_signature(file_content: bytes) -> bool:
+    """Return True when bytes start with the standard PDF signature."""
+    return file_content.startswith(b"%PDF")
+
+
 def validate_pdf(file_content: bytes, max_pages: int = 40) -> Tuple[bool, Optional[int], Optional[str]]:
     """
     Validate PDF file
@@ -21,6 +26,9 @@ def validate_pdf(file_content: bytes, max_pages: int = 40) -> Tuple[bool, Option
         Tuple of (is_valid, page_count, error_message)
     """
     try:
+        if not has_pdf_signature(file_content):
+            return False, None, "Invalid PDF file: missing PDF signature"
+
         # Create PDF reader from bytes
         pdf_reader = PdfReader(BytesIO(file_content))
         page_count = len(pdf_reader.pages)
